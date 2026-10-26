@@ -10,34 +10,37 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # wanderlust
 
-Fresh Next.js (App Router) project built with `create-next-app`. No application features have been implemented yet — `src/app/page.tsx` is an empty placeholder.
+Travel-booking UI built with `create-next-app`. Early stage: landing page plus destination pages; no database or tests. Pages under `src/app/destinations/` and `src/app/add-destination/` talk to a **separate backend dev server on `http://localhost:8000` (not in this repo)**: GET `/destinations`, GET+DELETE `/destinations/:id`, POST `/add-destination`. Without it the destinations list falls back to hard-coded `SAMPLE_DESTINATIONS`, and `/destinations/[id]` renders a 404 (`notFound()` on fetch failure).
 
 ## Commands
 
-- `npm run dev` — start the dev server (http://localhost:3000)
-- `npm run build` — production build
-- `npm run start` — serve the production build
-- `npm run lint` — run ESLint
-
-There are no tests and no database/backend; this is a UI-only frontend at the moment.
+- `npm run dev` — dev server at http://localhost:3000
+- `npm run build` — production build; also the de facto typecheck (no standalone typecheck script; `npx tsc --noEmit` works too)
+- `npm run lint` — ESLint flat config, runs plain `eslint` (not `next lint`)
+- Never delete the Next.js agent-rules block at the top of this file; `next dev` re-adds it if removed.
 
 ## Stack
 
-- **Next.js 16.4.3** (App Router, React 19.3, React Compiler via `babel-plugin-react-compiler`), TypeScript strict
-- **Tailwind CSS v4** — no config file; styling/theme lives in `src/app/globals.css` (CSS variables). Powered by `@tailwindcss/turbopack`.
-- **shadcn/ui** components in `src/components/ui/` (style: `base-nova`, config in `components.json`). Add more via the `shadcn` CLI; they land in `src/components/ui/`.
-- **lucide-react** for icons; `cn()` helper at `src/lib/utils.ts` (alias `@/lib/utils`).
-- Fonts: Josefin Sans via `next/font/google` in `src/app/layout.tsx`.
+- Next.js 16.4.3 (App Router), React 19.3, TypeScript strict
+- `reactCompiler: true` in `next.config.ts` — components are auto-memoized; don't wrap things in `useMemo`/`useCallback` defensively
+- `cacheComponents: false` / `partialPrefetching: false` (explicitly disabled) — the cacheComponents data-fetching restrictions don't apply; if re-enabled, read `node_modules/next/dist/docs/` first
+- Tailwind CSS v4, no JS config — theme lives as CSS variables (oklch, neutral base) in `src/app/globals.css`; dark mode is a `.dark` class via `@custom-variant`
+- shadcn/ui, style `base-nova` (`components.json`); primitives land in `src/components/ui/`
+- Path alias `@/*` → `src/*`; `cn()` at `@/lib/utils`
 
 ## Structure
 
-- `src/app/` — App Router pages/layouts, global styles, favicon
-- `src/components/ui/` — shadcn/ui primitives (generated, generally don't hand-edit)
-- `src/hooks/` — shared React hooks (`use-mobile`, `use-highlighted-code`)
-- `src/lib/` — utilities (`utils.ts`, `highlighter.tsx` using shiki)
-- Path alias: `@/*` maps to `src/*`
+- `src/app/page.tsx` — landing page composing sections: `Banner`, `WhyChoose`, `Testimonials`, `Cta`
+- `src/app/layout.tsx` — renders `Navbar` and `Footer` around every page; Josefin Sans via `next/font/google`
+- `src/app/add-destination/` — client form ('use client', shadcn inputs) POSTing JSON to `http://localhost:8000/add-destination`
+- `src/app/destinations/` — server page fetches via `api.ts` (`BACKEND_URL`, `fetchDestinations`/`fetchDestination`, `normalizeDestination` which coerces several possible backend field names → the `Destination` type in `card.tsx`); `view.tsx` is the 'use client' filter/sort shell
+- `src/app/destinations/[id]/` — detail page; `delete-button.tsx` DELETEs the destination then `router.push('/destinations') + router.refresh()`
+- `src/components/` — feature sections with hard-coded local data; `src/components/ui/` — generated shadcn code, add more via the `shadcn` CLI rather than hand-editing
+- `src/hooks/`, `src/lib/` — shared hooks and utils (`highlighter.tsx` wraps shiki, JS regex engine)
+- Static images in `public/images/` (incl. `destinations/`), referenced as `/images/...`
 
 ## Conventions
 
-- Existing shadcn/ui components are generated code — prefer the CLI over manual edits.
-- The Next.js agent rules block at the top of this file must be preserved; this Next.js version has breaking changes, so consult `node_modules/next/dist/docs/` before writing framework code.
+- UI brand is spelled "Wanderlast" (navbar, logo images) even though the repo/package is "wanderlust"
+- Sections use Tailwind's cyan palette (`cyan-500`/`cyan-600`) as the accent instead of the shadcn `--primary` token — match the surrounding code
+- Client components (`footer`, `testimonials`, most ui primitives) import `'use client'`; feature sections are otherwise plain server components
